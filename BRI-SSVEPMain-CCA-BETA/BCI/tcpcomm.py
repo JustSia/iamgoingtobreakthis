@@ -8,12 +8,14 @@ send_marker = send_marker()
 class TCPComm(threading.Thread):
     def __init__(self, mindoobj, host="192.168.43.129", recvesize=1, srate=500, time=5, savedata=True, session=1, trials=24, name="Charlie", port=8052, robohost=True, online=True):
         threading.Thread.__init__(self)
-        self.received_marker, self.srate, self.time, self.host, self.port, self.robohost, self.robomaster, self.trials, self.mySocket, self.mindoobj, self.recvsize, self.gameover, self.savedata, self.session, self.name, self.clf, self.clf_er, self.n_class, self.targets, self.robot_reached, self.online, self.pause = False, srate, time, host, port, robohost, bool(robohost), trials, socket.socket(), mindoobj, recvesize, False, savedata, session, name, classifier(srate=srate, name=name), classifier_er(srate=srate, name=name), len(self.clf.freqs), np.arange(self.n_class)+1, True, online, False
+        self.received_marker, self.srate, self.time, self.host, self.port, self.robohost, self.robomaster, self.trials, self.mySocket, self.mindoobj, self.recvsize, self.gameover, self.savedata, self.session, self.name, self.clf, self.clf_er, self.robot_reached, self.online, self.pause = False, srate, time, host, port, robohost, bool(robohost), trials, socket.socket(), mindoobj, recvesize, False, savedata, session, name, classifier(srate=srate, name=name), classifier_er(srate=srate, name=name), True, online, False
         assert self.trials%6==0, "Wrong number of trails".format(self.trials)
         self.setup_robot()
         self.mySocket.bind((self.host, self.port))
         print("init done"); print("trail =",self.trials)
         atexit.register(self.stoptcp)
+        self.n_class=len(self.clf.freqs)
+        self.targets = np.arange(self.n_class)+1
         self.targets = self.targets.repeat(int(self.trials/self.n_class))
         rng = np.random.default_rng(); rng.shuffle(self.targets)
 
@@ -105,6 +107,15 @@ class TCPComm(threading.Thread):
 
     def start_pause(self):                                                                                                    
         self.pause = True
+        
+    def sendmsgtohololens(self, msg):
+        self.conn.send(msg.encode())
+
+    def get_ssvepcls(self, eeg_signal):
+        return self.clf.get_ssvep_command(eeg_signal)
+
+    def get_er_cls(self, eeg_signal):
+        return self.clf_er.get_ssvep_command(eeg_signal)
 
     def stoptcp(self):
         try: self.mindoobj.stop_streaming()
