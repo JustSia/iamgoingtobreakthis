@@ -33,15 +33,18 @@ class TCPComm(threading.Thread):
         conn, addr = self.mySocket.accept()
         self.conn = conn
         i, got = 0, "8"
-        print("mindo_status: ", self.mindoobj.serstatus)
-        order, ssvep_eeg, rsvp_eeg, ssvep_labels, er_labels, decision_times, rsvp_labels, self.eeg_label, self.er_label, hololensLooked = [], [], [], [], [], [], [], [], [], []
-
+        print("mindo_status:", self.mindoobj.serstatus)
+        print("------------------- Trial [{}] -------------------".format(i+1))
+        order = ssvep_eeg = rsvp_eeg = ssvep_labels = er_labels = decision_times = rsvp_labels = self.eeg_label = self.er_label = hololensLooked = []
         while self.mindoobj.serstatus == 1 and len(er_labels) < self.trials:
             start_time = time.time()
             if i < self.trials:
                 target = self.targets[i]
-                print("------------------- Trial [{}] -------------------".format(i+1))
-
+            if got in ["7", "8"] and i < self.trials:
+                if not (self.robomaster and self.robot_reached):
+                    print("------------------- Trial [{}] -------------------".format(i+1))
+                else:
+                    self.robot_reached = False
             data = self.conn.recv(self.recvsize)
             data = self.conn.recv(self.recvsize)
             gap_time = time.time() - start_time
@@ -49,35 +52,54 @@ class TCPComm(threading.Thread):
                 self.end_loop()
                 break
             got = data.decode()
-            if data.decode() == "s":
+            if got == "s":
                 print("Stopping System")
                 self.end_loop()
-            elif data.decode() == "p":                                                                               
+            elif got == "p":
                 print("SSVEP BCI Paused")
                 print("------------- Abandoning Trial [{}] --------------".format(i+1))
                 print("SSVEP BCI output:  N/A")
                 ssvep_labels.append(10)
                 self.eeg_label.append(10)
-                self.start_pause()    
-            elif data.decode() == "g":      
-                i += 1 
+                self.start_pause()
+            elif got == "g":
+                i += 1
                 er_labels.append(8)
                 self.er_label.append(2)
                 self.send_unpause(i)
-            elif data.decode() in ["1", "2", "3", "4", "5", "6", "7", "8"]:
-                if self.pause == False:
-                    eeg_signal = self.mindoobj.eeg_final
-                    if got in ["1", "2", "3", "4", "5", "6"]:
-                        ssvep_eeg.append(eeg_signal)
-                        ssvep_labels.append(int(got))
-                    elif got in ["7", "8"] and i!=0:                                                                           
-                        ssvep_eeg.append(eeg_signal)
-                        er_labels.append(int(got))
-                    self.send_decision(eeg_signal, got)
+            elif got in ["1", "2", "3", "4", "5", "6", "7", "8"] and not self.pause:
+                eeg_signal = self.mindoobj.eeg_final
+                if got in ["1", "2", "3", "4", "5", "6"]:
+                    ssvep_eeg.append(eeg_signal)
+                    ssvep_labels.append(int(got))
+                elif got in ["7", "8"] and i != 0:
+                    ssvep_eeg.append(eeg_signal)
+                    er_labels.append(int(got))
+                self.send_decision(eeg_signal, got)
             if got in ["7", "8"]:
                 i += 1
                 self.robot_reached = False
             decision_times.append(gap_time)
+        print("Target_outputs =", ssvep_labels)
+        print("SSVEP_outputs =", self.eeg_label)
+        ssvep_labels_array, eeg_label_array = np.array(ssvep_labels), np.array(self.eeg_label)
+        match, accuracy = ssvep_labels_array == eeg_label_array, (ssvep_labels_array == eeg_label_array).mean()
+        print("Accuracy:", accuracy)
+        er_true, er_match = match * 1 + 1, (match * 1 + 1)[:len(self.er_label)] == self.er_label
+        er_accuracy = (er_match * 1).mean()
+        itr = self.itr(len(self.eeg_label), accuracy, 4)
+        print("6.ITR = {} bits/min".format(str(itr)[:5]))
+        print("7.SSVEP Accuracy = {}%".format(accuracy*100))
+        print("8.ER Accuracy = {}%".format(er_accuracy*100))
+        print("9.Time = {}(s)".format(4*len(self.eeg_label)))
+        if self.mindoobj.serstatus == 0:
+            print("Not Connected to HoloLens or")
+            print("EEG Device Not Found, Please check LSL or other connection types")
+        time.sleep(0.1)
+        self.mindoobj.serstatus = 0
+        self.stoptcp()
+        time.sleep(0.1)
+        print("tcp exit")
 
 
     def end_loop(self):
