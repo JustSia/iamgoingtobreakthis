@@ -1,0 +1,5 @@
+djitellopy
+cfclient
+pylsl==1.16.1
+matplotlib==3.7.1
+scikit-learn

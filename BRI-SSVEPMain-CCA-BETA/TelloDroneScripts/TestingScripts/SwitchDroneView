@@ -1,0 +1,103 @@
+# === NOT FINISHED SWITCH DRONE LIVE CAMERA VIEW ===
+# By Justin
+# Date: 06/May/2024
+# USE TEST Python venv
+
+from djitellopy import Tello, TelloSwarm
+import cv2
+import threading
+import socket
+
+# Drone IPs
+drone_ips = ['192.168.0.7', None]  # None indicates a dummy drone
+
+# Target IP and port for the video stream
+target_ip = '192.168.0.199'
+target_port = 12347
+
+# Current drone index
+current_drone_index = 0
+
+# Flag to stop video streaming
+stop_video = False
+
+class DummyTello:
+    def get_frame_read(self):
+        return None
+
+    def streamon(self):
+        pass
+
+    def streamoff(self):
+        pass
+
+    def get_address(self):
+        return None
+
+    def __getattr__(self, name):
+        def dummy(*args, **kwargs):
+            pass
+        return dummy
+
+def tello_video(tello):
+    global stop_video, current_drone_index
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    server_socket.bind(('0.0.0.0', 12346))
+
+    while not stop_video:
+        if isinstance(tello, DummyTello):
+            continue
+        if drone_ips[current_drone_index] is not None:
+            frame_read = tello.get_frame_read()
+            if frame_read:
+                frame = frame_read.frame
+                frame = cv2.resize(frame, (160, 120))
+                frame_bytes = frame.tobytes()
+
+                packet_size = 57600
+                for i in range(0, len(frame_bytes), packet_size):
+                    packet = frame_bytes[i:i + packet_size]
+                    server_socket.sendto(packet, (target_ip, target_port))
+
+    server_socket.close()
+
+def switch_drone_view(new_index):
+    global current_drone_index
+    current_drone_index = new_index
+
+def main():
+    global stop_video
+
+    tello_swarm = []
+    for ip in drone_ips:
+        if ip:
+            tello = Tello(ip)
+            tello.connect()
+            tello_swarm.append(tello)
+        else:
+            tello_swarm.append(DummyTello())
+
+    for tello in tello_swarm:
+        if not isinstance(tello, DummyTello):
+            tello.streamon()
+        threading.Thread(target=tello_video, args=(tello,), daemon=True).start()
+
+    try:
+        while True:
+            user_input = input("Enter '0' or '1' to switch drones (or 'q' to quit): ").strip()
+            if user_input in {'0', '1'}:
+                switch_drone_view(int(user_input))
+                print(f"Switched to drone {user_input}")
+            elif user_input == 'q':
+                break
+
+    except KeyboardInterrupt:
+        print("\nKeyboard interrupt received. Terminating the program...")
+
+    stop_video = True
+    for tello in tello_swarm:
+        if not isinstance(tello, DummyTello):
+            tello.streamoff()
+
+if __name__ == '__main__':
+    main()
