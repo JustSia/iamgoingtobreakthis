@@ -5,7 +5,7 @@
 
 # python RunBCI.py --device menta --trial 24                             <--------- Use this for VIRTUAL/Crazyflie DRONE, no feedback, no robot testing (Cannot be used to send command without robothost).
 # python RunBCI.py --device menta --robhost 192.168.0.202 --trial 24     <---- USE THIS FOR FULL SYSTEM (DEMO)
-# python RunBCI.py --device menta --robhost 192.168.1.44 --trial 300 --online False  <---- USE THIS FOR EYE SYSTEM (FAKE DEMO, STILL NEED MENTA CONNECTION)
+# python RunBCI.py --device menta --robhost 192.168.0.198  --trial 300 --online False  <---- USE THIS FOR EYE SYSTEM (FAKE DEMO, STILL NEED MENTA CONNECTION)
 # python RunBCI.py --device menta --robhost 192.168.0.198 --trial 300 --online False --simulate <---- USE THIS FOR EYE SYSTEM (FAKE DEMO, DONT NEED MENTA CONNECTION)
 import argparse
 import numpy as np
@@ -68,6 +68,8 @@ def initialize_device(config):
         return v3device(stream_name="Cyton8_BFSample", srate=250, channels=4, time=5)
     elif device == "menta":
         return menta(stream_name="Explore_849B_ExG", srate=500, channels=8, time=5)
+    elif device == "":
+        return None
     else:
         print("Choose device from 1) mindo1, 2) mindo2, 3)liveamp")
         exit()
@@ -94,9 +96,12 @@ if __name__ == '__main__':
 
     if not config.simulate:
         mindo = initialize_device(config)
-        mindo.daemon = True
-        mindo.start()
-        time.sleep(1)
+        if mindo is not None:
+            mindo.daemon = True
+            mindo.start()
+            time.sleep(1)
+    else:
+        mindo = None
 
     tcpcomm = TCPComm(mindoobj=mindo, host=host, srate=500, time=5, savedata=True, session=2,
                       trials=int(config.trial), name=config.name, robohost=config.robhost, online=config.online)

@@ -95,7 +95,12 @@ class TCPComm(threading.Thread):
         self.conn = conn
         i = 0
         got="8"
-        print("mindo_status: ", self.mindoobj.serstatus)
+        
+        if self.mindoobj is not None:
+            print("mindo_status: ", self.mindoobj.serstatus)
+        else:
+            print("No device connected. Running without EEG data.")
+        
         print("------------------- Trial [{}] -------------------".format(i+1))
         order = []
         ssvep_eeg = []
@@ -121,7 +126,7 @@ class TCPComm(threading.Thread):
         #         prepared = struct.unpack('!i', b_data)[0]
         #         print("robot is prepared: ",prepared)
 
-        while self.mindoobj.serstatus == 1 and len(er_labels) < self.trials:
+        while (self.mindoobj is None or self.mindoobj.serstatus == 1) and len(er_labels) < self.trials:
             start_time = time.time()
             # produce the sound:
             if i < self.trials:
