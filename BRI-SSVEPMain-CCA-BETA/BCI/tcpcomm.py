@@ -32,16 +32,16 @@ class TCPComm(threading.Thread):
         self.mySocket.listen(1)
         conn, addr = self.mySocket.accept()
         self.conn = conn
-        i, got, order, ssvep_eeg, rsvp_eeg, ssvep_labels, er_labels, decision_times, rsvp_labels, self.eeg_label, self.er_label, hololensLooked = 0, "8", [], [], [], [], [], [], [], [], [], []
+        i, got = 0, "8"
         print("mindo_status: ", self.mindoobj.serstatus)
+        order, ssvep_eeg, rsvp_eeg, ssvep_labels, er_labels, decision_times, rsvp_labels, self.eeg_label, self.er_label, hololensLooked = [], [], [], [], [], [], [], [], [], []
+
         while self.mindoobj.serstatus == 1 and len(er_labels) < self.trials:
             start_time = time.time()
-            if i < self.trials: target=self.targets[i]
-            if got in ["7", "8"] and i < self.trials:
-                if self.robomaster==True and self.robot_reached ==True:
-                    self.robot_reached = False
-                else:
-                    print("------------------- Trial [{}] -------------------".format(i+1))
+            if i < self.trials:
+                target = self.targets[i]
+                print("------------------- Trial [{}] -------------------".format(i+1))
+
             data = self.conn.recv(self.recvsize)
             data = self.conn.recv(self.recvsize)
             gap_time = time.time() - start_time
@@ -60,7 +60,7 @@ class TCPComm(threading.Thread):
                 self.eeg_label.append(10)
                 self.start_pause()    
             elif data.decode() == "g":      
-                i+=1 
+                i += 1 
                 er_labels.append(8)
                 self.er_label.append(2)
                 self.send_unpause(i)
@@ -75,32 +75,10 @@ class TCPComm(threading.Thread):
                         er_labels.append(int(got))
                     self.send_decision(eeg_signal, got)
             if got in ["7", "8"]:
-                i+=1
+                i += 1
                 self.robot_reached = False
             decision_times.append(gap_time)
-        print("Target_outputs =", ssvep_labels)
-        print("SSVEP_outputs = ", self.eeg_label)
-        ssvep_labels_array = np.array(ssvep_labels)
-        eeg_label_array = np.array(self.eeg_label)
-        match = ssvep_labels_array == eeg_label_array
-        accuracy = match.mean()
-        print("Accuracy:", accuracy)
-        er_true=match*1+1
-        er_match = er_true[:len(self.er_label)] == self.er_label
-        er_accuracy = (er_match * 1).mean()
-        itr=self.itr(len(self.eeg_label), accuracy, 4)
-        print("6.ITR = {} bits/min".format(str(itr)[:5]))
-        print("7.SSVEP Accuracy = {}%".format(accuracy*100))
-        print("8.ER Accuracy = {}%".format(er_accuracy*100))
-        print("9.Time = {}(s)".format(4*len(self.eeg_label)))
-        if self.mindoobj.serstatus == 0: 
-            print("Not Connected to HoloLens or")
-            print("EEG Device Not Found, Please check LSL or other connection types")
-        time.sleep(0.1)
-        self.mindoobj.serstatus = 0
-        self.stoptcp()
-        time.sleep(0.1)
-        print("tcp exit")
+
 
     def end_loop(self):
         self.mindoobj.serstatus, self.mindoobj.streaming, self.received_marker, self.gameover = 0, False, True, True
