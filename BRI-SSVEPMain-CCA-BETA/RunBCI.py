@@ -19,12 +19,7 @@ import time
 path = os.path.join('.', 'BCI')
 sys.path.append(path)
 
-from stream_mindov2 import StreamMindo as mindov2
-from stream_mindov1 import StreamMindo as mindov1
-from stream_liveamp import StreamLiveAmp as liveamp
-from stream_openbci import StreamOpenBCI as openbci
 from tcpcomm import TCPComm
-from stream_v3 import StreamV3 as v3device
 from stream_mentalab import StreamMenta as menta
 
 def get_ip():
@@ -43,30 +38,16 @@ def parse_arguments():
     parser = argparse.ArgumentParser(description='port id')
     parser.add_argument('-p', '--port', default='/dev/rfcomm0', help='Port')
     parser.add_argument('-n', '--name', default='s1', help='name')
-    # parser.add_argument('-s', '--device', default='mindo2', help='eeg device')
     parser.add_argument('-s', '--device', default='menta', help='eeg device')
     parser.add_argument('-rh', '--robhost', default=None, help='ip of robot')
-    # parser.add_argument('-sh', '--smarthost', default=None, help='ip of smarthome devices')
     parser.add_argument('-t', '--trial', default=18, help='number of trials')
-    # parser.add_argument('-rm', '--robomaster', default=False, help='eeg device', type=bool)
-    # parser.add_argument('-rm', '--robohost', default=None, help='eeg device')
     parser.add_argument('-o', '--online', default=True, help='Use EEG Data')
     parser.add_argument('-sim', '--simulate', action='store_true', help='Run in simulation mode')
     return parser.parse_args()
 
 def initialize_device(config):
     device = config.device
-    if device == "mindo1":
-        return mindov1("BRA-801", port=config.port, srate=500, time=5)
-    elif device == "mindo2":
-        return mindov2("BRA-801", port=config.port, srate=500, time=5)
-    elif device == "liveamp":
-        return liveamp(stream_name="LiveAmpSN-055606-0346", srate=500, channels=64, time=5)
-    elif device == "openbci":
-        return openbci(stream_name="obci_eeg1", srate=250, channels=8, time=5)
-    elif device == "v3":
-        return v3device(stream_name="Cyton8_BFSample", srate=250, channels=4, time=5)
-    elif device == "menta":
+    if device == "menta":
         return menta(stream_name="Explore_849B_ExG", srate=500, channels=8, time=5)
     else:
         print("Choose device from 1) mindo1, 2) mindo2, 3)liveamp")
