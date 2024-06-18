@@ -36,7 +36,7 @@ class TCPComm(threading.Thread):
         print("mindo_status:", self.mindoobj.serstatus)
         print("------------------- Trial [{}] -------------------".format(i+1))
         order = ssvep_eeg = rsvp_eeg = ssvep_labels = er_labels = decision_times = rsvp_labels = self.eeg_label = self.er_label = hololensLooked = []
-        while self.mindoobj.serstatus == 1 and len(er_labels) < self.trials:
+        while (self.mindoobj.serstatus == 1 or isinstance(self.mindoobj, SimulatedEEG)) and len(er_labels) < self.trials:
             start_time = time.time()
             if i < self.trials:
                 target = self.targets[i]
