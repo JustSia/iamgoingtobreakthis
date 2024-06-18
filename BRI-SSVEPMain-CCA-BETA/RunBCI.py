@@ -21,6 +21,7 @@ sys.path.append(path)
 
 from tcpcomm import TCPComm
 from stream_mentalab import StreamMenta as menta
+from stream_sim import SimulatedEEG as sim
 
 def get_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -47,7 +48,9 @@ def parse_arguments():
 
 def initialize_device(config):
     device = config.device
-    if device == "menta":
+    if config.simulate:
+        return sim(stream_name="SimulatedEEG", srate=500, channels=8, time=5)
+    elif device == "menta":
         return menta(stream_name="Explore_849B_ExG", srate=500, channels=8, time=5)
     else:
         print("Choose device from 1) mindo1, 2) mindo2, 3)liveamp")
@@ -73,19 +76,20 @@ if __name__ == '__main__':
     host = get_ip()
     print("Host IP address:", host)
 
-    if not config.simulate:
-        mindo = initialize_device(config)
-        mindo.daemon = True
-        mindo.start()
-        time.sleep(1)
-
+    mindo = initialize_device(config)
+    mindo.daemon = True
+    mindo.start()
+    time.sleep(1)
+    print("mindo started")
     tcpcomm = TCPComm(mindoobj=mindo, host=host, srate=500, time=5, savedata=True, session=2,
                       trials=int(config.trial), name=config.name, robohost=config.robhost, online=config.online)
+    
     tcpcomm.daemon = True
     tcpcomm.start()
     time.sleep(1)
-
+    
     Send_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
     my_ip = socket.gethostbyname(socket.gethostname())
     Send_sock.bind((my_ip, 5000))
     Send_IP = my_ip
@@ -106,12 +110,7 @@ if __name__ == '__main__':
 
     while True:
         try:
-            if config.simulate:
-                num = random.randint(0, 9)
-                print(f"Sending command: {num}")
-                time.sleep(1)
-            else:
-                num = int(input(""))
+            num = int(input(""))
             send_command(config, num)
         except KeyboardInterrupt as e:
             print("Got exception:", e)
