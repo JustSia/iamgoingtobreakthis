@@ -1,3 +1,9 @@
+'''
+File: RunBCI.py
+Current version done by: Justin Sia
+Last Modified: June 22, 2024
+Stage: Tested in Simulation, Not yet tested on Holones or Robot
+'''
 # python RunBCI.py --device mindo2 --port COM7 --trial 24
 # python RunBCI.py --device menta --trial 24
 # python RunBCI.py --device openbci --trial 24
